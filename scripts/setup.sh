@@ -121,6 +121,40 @@ install_ollama() {
 }
 
 # --------------------------------------------------------------------------
+# Install Claude Code
+# --------------------------------------------------------------------------
+
+install_claude_code() {
+    if command -v claude &>/dev/null; then
+        ok "Claude Code already installed ($(claude --version 2>/dev/null || echo 'unknown'))"
+        read -rp "Update to latest? [y/N] " update
+        if [[ "$update" =~ ^[Yy]$ ]]; then
+            info "Updating Claude Code..."
+            npm install -g @anthropic-ai/claude-code@latest
+        fi
+    else
+        info "Installing Claude Code..."
+        npm install -g @anthropic-ai/claude-code@latest
+        ok "Claude Code installed"
+    fi
+
+    # Check for API key
+    if [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
+        warn "ANTHROPIC_API_KEY not set"
+        echo "  Get one at https://console.anthropic.com/settings/keys"
+        read -rp "  Enter your Anthropic API key (or press Enter to skip): " key
+        if [[ -n "$key" ]]; then
+            echo "ANTHROPIC_API_KEY=$key" >> "$ENV_FILE"
+            ok "Anthropic key saved to $ENV_FILE"
+        else
+            warn "Claude Code installed but won't work without an API key"
+        fi
+    else
+        ok "ANTHROPIC_API_KEY is set"
+    fi
+}
+
+# --------------------------------------------------------------------------
 # Create directory structure
 # --------------------------------------------------------------------------
 
@@ -316,6 +350,8 @@ main() {
     install_openclaw
     echo ""
     install_ollama
+    echo ""
+    install_claude_code
     echo ""
     create_directories
     echo ""
