@@ -35,26 +35,61 @@ Aldric/
 │   ├── projects/           # Agent project workspaces
 │   └── logs/               # Execution logs
 └── scripts/
-    └── setup.sh            # One-shot install and deploy script
+    ├── bootstrap.sh        # OS-level package/driver installation (run first)
+    ├── setup.sh            # App-level install and deploy (OpenClaw, Ollama, Claude Code)
+    └── harden.sh           # Security hardening (firewall, SSH, fail2ban)
 ```
 
-## Setup
+## Host Setup
+
+Aldric targets **Ubuntu Server 24.04 LTS (minimal install)** on a dedicated host.
+The minimal image ships without `systemd-resolved`, so DNS is broken out of the box.
+
+### 1. Fix DNS (mandatory on minimal install)
 
 ```bash
-# Clone and run
-git clone <this-repo> ~/Aldric
-cd ~/Aldric
-./scripts/setup.sh
+# Verify: network works, but DNS doesn't
+ping -c 1 8.8.8.8              # should succeed
+ping -c 1 archive.ubuntu.com   # will fail
+
+# Temporary static resolv.conf so apt can work
+sudo rm -f /etc/resolv.conf
+echo -e "nameserver 8.8.8.8\nnameserver 1.1.1.1" | sudo tee /etc/resolv.conf
+
+# Install the real fix
+sudo apt update && sudo apt install -y systemd-resolved
+
+# Restore the proper symlink
+sudo ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
+sudo systemctl enable --now systemd-resolved
 ```
 
-The setup script will:
-1. Check prerequisites (Node.js 22+)
-2. Install OpenClaw
-3. Create the workspace directory structure
-4. Deploy configuration and templates
-5. Prompt for API keys (OpenRouter, Discord)
-6. Optionally install useful system tools (Python, SQLite, jq)
-7. Optionally set up a systemd service for auto-start
+### 2. Clone and bootstrap
+
+```bash
+sudo apt install -y git curl openssh-server
+sudo systemctl enable --now ssh
+
+git clone <this-repo> ~/Aldric
+cd ~/Aldric
+sudo ./scripts/bootstrap.sh    # installs packages, NVIDIA drivers, Node.js, etc.
+sudo reboot                    # required if NVIDIA drivers were installed
+```
+
+### 3. App setup and hardening
+
+```bash
+cd ~/Aldric
+nvidia-smi                     # verify GPU after reboot
+./scripts/setup.sh             # OpenClaw, Ollama, Claude Code, workspace
+sudo ./scripts/harden.sh       # firewall, SSH lockdown, fail2ban, service account
+```
+
+### What each script does
+
+- **`bootstrap.sh`** — OS-level packages: NVIDIA drivers, Node.js 22, Python 3, build tools, security tools. Idempotent — safe to re-run.
+- **`setup.sh`** — App-level: installs OpenClaw, Ollama, Claude Code; deploys config and workspace; optionally creates a systemd service.
+- **`harden.sh`** — Security: creates a dedicated `aldric` service account (no sudo), configures UFW firewall with SSH rate limiting, hardens SSH (key-only), sets up fail2ban, applies kernel security parameters, enforces AppArmor. Re-runnable as a compliance audit.
 
 ## Key Design Decisions
 
