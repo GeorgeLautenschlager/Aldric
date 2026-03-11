@@ -1,0 +1,111 @@
+{
+  // Aldric — OpenClaw configuration
+  // Long-duration autonomous cognition experiment
+
+  "agents": {
+    "default": "aldric",
+    "list": {
+      "aldric": {
+        "model": "openrouter/anthropic/claude-sonnet-4-6",
+        "fallbacks": [
+          "openrouter/anthropic/claude-opus-4-6",
+          "openrouter/google/gemini-2.5-pro",
+          "openrouter/deepseek/deepseek-r1"
+        ],
+        "imageMaxDimensionPx": 1200,
+        "workspace": "~/.openclaw/agents/aldric/workspace"
+      }
+    }
+  },
+
+  "providers": {
+    "openrouter": {
+      "baseUrl": "https://openrouter.ai/api/v1",
+      "apiKey": { "$env": "OPENROUTER_API_KEY" }
+    }
+  },
+
+  // Discord channel
+  "channels": {
+    "discord": {
+      "enabled": true,
+      "token": { "$env": "DISCORD_BOT_TOKEN" },
+      "dmAccess": "pairing",
+      "groups": {
+        "mentionGated": true
+      }
+    }
+  },
+
+  // Session management — long-duration oriented
+  "session": {
+    "dmScope": "per-peer",
+    "reset": {
+      "mode": "idle",
+      "idleMinutes": 1440  // 24 hours of silence before reset
+    },
+    "threadBinding": {
+      "enabled": true,
+      "idleTimeout": "24h"
+    }
+  },
+
+  // No sandboxing — full autonomy
+  "sandbox": {
+    "mode": "off"
+  },
+
+  // Exec — unrestricted gateway execution
+  "exec": {
+    "host": "gateway",
+    "security": "full",
+    "approval": {
+      "ask": "off"
+    },
+    "timeout": 3600
+  },
+
+  // Heartbeat — Aldric wakes up every 30 min even without messages
+  "heartbeat": {
+    "every": "30m"
+  },
+
+  // Cron — periodic self-maintenance tasks
+  "cron": {
+    "jobs": {
+      "memory-maintenance": {
+        "schedule": "0 */6 * * *",
+        "description": "Review and consolidate memory files",
+        "prompt": "Review your memory files in memory/. Consolidate any scattered notes into the appropriate files (journal.md, knowledge.md, projects.md). Remove duplicates. Update indexes if you've built any. Write a brief summary of what you did to memory/journal.md.",
+        "sessionRetention": "discard"
+      },
+      "self-review": {
+        "schedule": "0 3 * * *",
+        "description": "Nightly self-reflection and improvement planning",
+        "prompt": "Read memory/journal.md and memory/projects.md. Reflect on what you've done in the last 24 hours. Are there tools or skills you should build? Patterns you've noticed? Improvements to make? Write your reflections and any action items to memory/journal.md.",
+        "sessionRetention": "discard"
+      }
+    }
+  },
+
+  // Skills — load from workspace first
+  "skills": {
+    "load": {
+      "extraDirs": []
+    }
+  },
+
+  // Hooks
+  "hooks": {
+    "internal": {
+      "enabled": true,
+      "entries": {
+        "session-memory": { "enabled": true },
+        "boot-md": { "enabled": true }
+      }
+    }
+  },
+
+  // Hot reload — pick up config changes without restart
+  "hotReload": "hybrid"
+}
