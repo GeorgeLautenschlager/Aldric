@@ -6,11 +6,10 @@
     "default": "aldric",
     "list": {
       "aldric": {
-        "model": "openrouter/anthropic/claude-sonnet-4-6",
+        "model": "openrouter/deepseek/deepseek-chat",
         "fallbacks": [
-          "openrouter/google/gemini-2.5-pro",
           "openrouter/deepseek/deepseek-r1",
-          "openrouter/deepseek/deepseek-chat"
+          "openrouter/google/gemini-2.5-pro"
         ],
         "imageMaxDimensionPx": 1200,
         "workspace": "~/.openclaw/agents/aldric/workspace"
