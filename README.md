@@ -76,7 +76,29 @@ sudo ./scripts/bootstrap.sh    # installs packages, NVIDIA drivers, Node.js, etc
 sudo reboot                    # required if NVIDIA drivers were installed
 ```
 
-### 3. App setup and hardening
+### 3. Set up SSH key access
+
+Do this **before** running `harden.sh` — it disables password authentication.
+
+```bash
+# On the server: find your LAN IP
+ip addr show | grep "inet "
+
+# On your local machine (skip if you already have a key pair)
+ssh-keygen -t ed25519
+
+# Copy your public key to the server (while password auth still works)
+ssh-copy-id your-user@<server-ip>
+
+# Test key-based login
+ssh your-user@<server-ip>
+```
+
+For reliable access, assign the server a static IP or a DHCP reservation in your router.
+
+> `harden.sh` automatically copies the operator's SSH keys to the `aldric` service account, so you only need to do this once for your own user.
+
+### 4. App setup and hardening
 
 ```bash
 cd ~/Aldric
