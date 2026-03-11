@@ -104,6 +104,13 @@
         "model": "lmstudio/qwen3-14b",
         "prompt": "Read memory/journal.md and memory/projects.md. Reflect on what you've done in the last week. Are there tools or skills you should build? Patterns you've noticed? Improvements to make? Write your reflections and any action items to memory/journal.md.",
         "sessionRetention": "discard"
+      },
+      "update-openclaw": {
+        "schedule": "0 4 * * 3",
+        "description": "Weekly OpenClaw update check (Wednesdays 4 AM)",
+        "model": "lmstudio/qwen3-14b",
+        "prompt": "Run the OpenClaw update script: bash tools/update-openclaw/update.sh. Report the result. If the update changed versions, note any warnings from the log and check that the service is running.",
+        "sessionRetention": "discard"
       }
     }
   },
