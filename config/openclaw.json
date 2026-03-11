@@ -8,9 +8,9 @@
       "aldric": {
         "model": "openrouter/anthropic/claude-sonnet-4-6",
         "fallbacks": [
-          "openrouter/anthropic/claude-opus-4-6",
           "openrouter/google/gemini-2.5-pro",
-          "openrouter/deepseek/deepseek-r1"
+          "openrouter/deepseek/deepseek-r1",
+          "openrouter/deepseek/deepseek-chat"
         ],
         "imageMaxDimensionPx": 1200,
         "workspace": "~/.openclaw/agents/aldric/workspace"
@@ -65,24 +65,26 @@
     "timeout": 3600
   },
 
-  // Heartbeat — Aldric wakes up every 30 min even without messages
+  // Heartbeat — Aldric wakes up periodically even without messages
   "heartbeat": {
-    "every": "30m"
+    "every": "4h"
   },
 
   // Cron — periodic self-maintenance tasks
   "cron": {
     "jobs": {
       "memory-maintenance": {
-        "schedule": "0 */6 * * *",
+        "schedule": "0 */12 * * *",
         "description": "Review and consolidate memory files",
+        "model": "openrouter/deepseek/deepseek-chat",
         "prompt": "Review your memory files in memory/. Consolidate any scattered notes into the appropriate files (journal.md, knowledge.md, projects.md). Remove duplicates. Update indexes if you've built any. Write a brief summary of what you did to memory/journal.md.",
         "sessionRetention": "discard"
       },
       "self-review": {
-        "schedule": "0 3 * * *",
-        "description": "Nightly self-reflection and improvement planning",
-        "prompt": "Read memory/journal.md and memory/projects.md. Reflect on what you've done in the last 24 hours. Are there tools or skills you should build? Patterns you've noticed? Improvements to make? Write your reflections and any action items to memory/journal.md.",
+        "schedule": "0 3 * * 0",
+        "description": "Weekly self-reflection and improvement planning",
+        "model": "openrouter/deepseek/deepseek-chat",
+        "prompt": "Read memory/journal.md and memory/projects.md. Reflect on what you've done in the last week. Are there tools or skills you should build? Patterns you've noticed? Improvements to make? Write your reflections and any action items to memory/journal.md.",
         "sessionRetention": "discard"
       }
     }
