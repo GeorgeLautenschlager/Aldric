@@ -24,6 +24,30 @@ warn()  { echo -e "${YELLOW}[warn]${NC} $*"; }
 err()   { echo -e "${RED}[error]${NC} $*" >&2; }
 
 # --------------------------------------------------------------------------
+# Bootstrap check (has bootstrap.sh been run?)
+# --------------------------------------------------------------------------
+
+check_bootstrap() {
+    info "Checking OS bootstrap..."
+
+    local missing=()
+
+    command -v gcc &>/dev/null    || missing+=("gcc (build-essential)")
+    command -v python3 &>/dev/null || missing+=("python3")
+    command -v curl &>/dev/null    || missing+=("curl")
+
+    if (( ${#missing[@]} > 0 )); then
+        err "Missing OS-level packages: ${missing[*]}"
+        echo ""
+        echo "  Run the OS bootstrap first:"
+        echo "    sudo ./scripts/bootstrap.sh"
+        exit 1
+    fi
+
+    ok "OS bootstrap verified"
+}
+
+# --------------------------------------------------------------------------
 # Pre-flight checks
 # --------------------------------------------------------------------------
 
@@ -307,6 +331,19 @@ setup_systemd() {
 
     info "Creating systemd service..."
 
+    # Use the dedicated aldric service account if it exists (created by harden.sh),
+    # otherwise fall back to the current user with a warning.
+    local svc_user="$USER"
+    local svc_home="$HOME"
+    if id aldric &>/dev/null; then
+        svc_user="aldric"
+        svc_home="/home/aldric"
+        ok "Using dedicated 'aldric' service account"
+    else
+        warn "Service account 'aldric' not found — using $USER"
+        warn "Run sudo ./scripts/harden.sh to create it"
+    fi
+
     sudo tee "$service_file" > /dev/null <<EOF
 [Unit]
 Description=OpenClaw Gateway — Aldric
@@ -315,12 +352,16 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=$USER
-WorkingDirectory=$HOME
+User=$svc_user
+WorkingDirectory=$svc_home
 EnvironmentFile=$ENV_FILE
 ExecStart=$(command -v openclaw) daemon
 Restart=on-failure
 RestartSec=10
+LimitNOFILE=65536
+LimitNPROC=4096
+ProtectSystem=strict
+ReadWritePaths=$svc_home
 
 [Install]
 WantedBy=multi-user.target
@@ -345,6 +386,8 @@ main() {
     echo "  ╚═══════════════════════════════════════╝"
     echo ""
 
+    check_bootstrap
+    echo ""
     check_prereqs
     echo ""
     install_openclaw
@@ -376,6 +419,7 @@ main() {
     echo "    2. Invite your Discord bot to a server"
     echo "    3. Start: openclaw daemon"
     echo "    4. Pair:  openclaw pairing"
+    echo "    5. Harden: sudo ./scripts/harden.sh"
     echo ""
     echo "  Aldric will wake up, read BOOT.md, and orient himself."
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
