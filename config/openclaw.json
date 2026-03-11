@@ -6,11 +6,10 @@
     "default": "aldric",
     "list": {
       "aldric": {
-        "model": "openrouter/anthropic/claude-sonnet-4-6",
+        "model": "openrouter/deepseek/deepseek-chat",
         "fallbacks": [
-          "openrouter/google/gemini-2.5-pro",
           "openrouter/deepseek/deepseek-r1",
-          "openrouter/deepseek/deepseek-chat"
+          "openrouter/google/gemini-2.5-pro"
         ],
         "imageMaxDimensionPx": 1200,
         "workspace": "~/.openclaw/agents/aldric/workspace"
@@ -22,6 +21,24 @@
     "openrouter": {
       "baseUrl": "https://openrouter.ai/api/v1",
       "apiKey": { "$env": "OPENROUTER_API_KEY" }
+    },
+    "lmstudio": {
+      "baseUrl": "http://192.168.1.100:1234/v1",  // TODO: replace with your LAN IP
+      "apiKey": "lm-studio",
+      "api": "openai-completions",
+      "models": {
+        "qwen3-14b": {
+          "id": "qwen3-14b",
+          "contextWindow": 32768,
+          "maxTokens": 4096,
+          "costPerInputToken": 0,
+          "costPerOutputToken": 0,
+          "compat": {
+            "supportsDeveloperRole": false,
+            "supportsReasoningEffort": false
+          }
+        }
+      }
     }
   },
 
@@ -67,7 +84,8 @@
 
   // Heartbeat — Aldric wakes up periodically even without messages
   "heartbeat": {
-    "every": "4h"
+    "every": "4h",
+    "model": "lmstudio/qwen3-14b"
   },
 
   // Cron — periodic self-maintenance tasks
@@ -76,14 +94,14 @@
       "memory-maintenance": {
         "schedule": "0 */12 * * *",
         "description": "Review and consolidate memory files",
-        "model": "openrouter/deepseek/deepseek-chat",
+        "model": "lmstudio/qwen3-14b",
         "prompt": "Review your memory files in memory/. Consolidate any scattered notes into the appropriate files (journal.md, knowledge.md, projects.md). Remove duplicates. Update indexes if you've built any. Write a brief summary of what you did to memory/journal.md.",
         "sessionRetention": "discard"
       },
       "self-review": {
         "schedule": "0 3 * * 0",
         "description": "Weekly self-reflection and improvement planning",
-        "model": "openrouter/deepseek/deepseek-chat",
+        "model": "lmstudio/qwen3-14b",
         "prompt": "Read memory/journal.md and memory/projects.md. Reflect on what you've done in the last week. Are there tools or skills you should build? Patterns you've noticed? Improvements to make? Write your reflections and any action items to memory/journal.md.",
         "sessionRetention": "discard"
       }
