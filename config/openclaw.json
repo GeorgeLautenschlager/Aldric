@@ -22,13 +22,13 @@
       "baseUrl": "https://openrouter.ai/api/v1",
       "apiKey": { "$env": "OPENROUTER_API_KEY" }
     },
-    "lmstudio": {
-      "baseUrl": "http://192.168.1.100:1234/v1",  // TODO: replace with your LAN IP
-      "apiKey": "lm-studio",
+    "ollama": {
+      "baseUrl": "http://localhost:11434/v1",
+      "apiKey": "ollama",
       "api": "openai-completions",
       "models": {
-        "qwen3-14b": {
-          "id": "qwen3-14b",
+        "qwen2.5:7b": {
+          "id": "qwen2.5:7b",
           "contextWindow": 32768,
           "maxTokens": 4096,
           "costPerInputToken": 0,
@@ -85,7 +85,7 @@
   // Heartbeat — Aldric wakes up periodically even without messages
   "heartbeat": {
     "every": "4h",
-    "model": "lmstudio/qwen3-14b"
+    "model": "ollama/qwen2.5:7b"
   },
 
   // Cron — periodic self-maintenance tasks
@@ -94,21 +94,21 @@
       "memory-maintenance": {
         "schedule": "0 */12 * * *",
         "description": "Review and consolidate memory files",
-        "model": "lmstudio/qwen3-14b",
+        "model": "ollama/qwen2.5:7b",
         "prompt": "Review your memory files in memory/. Consolidate any scattered notes into the appropriate files (journal.md, knowledge.md, projects.md). Remove duplicates. Update indexes if you've built any. Write a brief summary of what you did to memory/journal.md.",
         "sessionRetention": "discard"
       },
       "self-review": {
         "schedule": "0 3 * * 0",
         "description": "Weekly self-reflection and improvement planning",
-        "model": "lmstudio/qwen3-14b",
+        "model": "ollama/qwen2.5:7b",
         "prompt": "Read memory/journal.md and memory/projects.md. Reflect on what you've done in the last week. Are there tools or skills you should build? Patterns you've noticed? Improvements to make? Write your reflections and any action items to memory/journal.md.",
         "sessionRetention": "discard"
       },
       "update-openclaw": {
         "schedule": "0 4 * * 3",
         "description": "Weekly OpenClaw update check (Wednesdays 4 AM)",
-        "model": "lmstudio/qwen3-14b",
+        "model": "ollama/qwen2.5:7b",
         "prompt": "Run the OpenClaw update script: bash tools/update-openclaw/update.sh. Report the result. If the update changed versions, note any warnings from the log and check that the service is running.",
         "sessionRetention": "discard"
       }

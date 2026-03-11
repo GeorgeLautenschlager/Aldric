@@ -86,6 +86,41 @@ install_openclaw() {
 }
 
 # --------------------------------------------------------------------------
+# Install Ollama (local model inference)
+# --------------------------------------------------------------------------
+
+install_ollama() {
+    if command -v ollama &>/dev/null; then
+        ok "Ollama already installed ($(ollama --version 2>/dev/null || echo 'unknown'))"
+    else
+        info "Installing Ollama..."
+        curl -fsSL https://ollama.com/install.sh | sh
+        ok "Ollama installed"
+    fi
+
+    # Ensure the Ollama service is running
+    if systemctl is-active --quiet ollama 2>/dev/null; then
+        ok "Ollama service is running"
+    else
+        info "Starting Ollama service..."
+        sudo systemctl enable ollama 2>/dev/null || true
+        sudo systemctl start ollama 2>/dev/null || ollama serve &>/dev/null &
+        sleep 2
+        ok "Ollama service started"
+    fi
+
+    # Pull the model Aldric uses for background tasks
+    local model="qwen2.5:7b"
+    if ollama list 2>/dev/null | grep -q "$model"; then
+        ok "Model $model already pulled"
+    else
+        info "Pulling $model (this may take a few minutes on first run)..."
+        ollama pull "$model"
+        ok "Model $model ready"
+    fi
+}
+
+# --------------------------------------------------------------------------
 # Create directory structure
 # --------------------------------------------------------------------------
 
@@ -125,6 +160,12 @@ deploy_config() {
     # Skills
     cp -r "$PROJECT_DIR/workspace/skills/"* "$WORKSPACE/skills/"
     ok "Skills deployed"
+
+    # Tools
+    if [[ -d "$PROJECT_DIR/workspace/tools" ]]; then
+        cp -r "$PROJECT_DIR/workspace/tools/"* "$WORKSPACE/tools/" 2>/dev/null || true
+        ok "Tools deployed"
+    fi
 
     # Seed memory files (only if they don't already exist)
     for f in journal.md knowledge.md projects.md; do
@@ -273,6 +314,8 @@ main() {
     check_prereqs
     echo ""
     install_openclaw
+    echo ""
+    install_ollama
     echo ""
     create_directories
     echo ""
