@@ -4,6 +4,13 @@
 
   "agents": {
     "default": "aldric",
+    "defaults": {
+        // Heartbeat — Aldric wakes up periodically even without messages
+        "heartbeat": {
+          "every": "4h",
+          "model": "ollama/qwen2.5:7b"
+      },
+    },
     "list": {
       "aldric": {
         "model": "openrouter/deepseek/deepseek-chat",
@@ -80,12 +87,6 @@
       "ask": "off"
     },
     "timeout": 3600
-  },
-
-  // Heartbeat — Aldric wakes up periodically even without messages
-  "heartbeat": {
-    "every": "4h",
-    "model": "ollama/qwen2.5:7b"
   },
 
   // Cron — periodic self-maintenance tasks
