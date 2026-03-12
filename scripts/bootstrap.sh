@@ -223,8 +223,8 @@ main() {
     echo "  ╚═══════════════════════════════════════╝"
     echo ""
 
-    fix_dns
-    echo ""
+    # fix_dns
+    # echo ""
     system_update
     echo ""
     install_kernel_headers
