@@ -43,23 +43,45 @@ Aldric/
 ## Host Setup
 
 Aldric targets **Ubuntu Server 24.04 LTS (minimal install)** on a dedicated host.
-The minimal image ships without `systemd-resolved`, so DNS is broken out of the box.
+The minimal image has several networking issues out of the box: no netplan config (no
+DHCP), no `systemd-resolved` (broken DNS symlink), and `nsswitch.conf` references a
+missing `resolve` module.
 
-### 1. Fix DNS (mandatory on minimal install)
+### 1. Fix networking (mandatory on minimal install)
+
+The minimal installer may not configure your network interface. Check and fix in order:
 
 ```bash
-# Verify: network works, but DNS doesn't
-ping -c 1 8.8.8.8              # should succeed
-ping -c 1 archive.ubuntu.com   # will fail
+# Check if you have a default route
+ip route | grep default
 
-# Temporary static resolv.conf so apt can work
+# If blank: no netplan config exists — create one for DHCP
+# Find your interface name first:
+ip link show                    # look for your ethernet device (e.g. enp9s0)
+sudo tee /etc/netplan/01-netcfg.yaml <<'EOF'
+network:
+  version: 2
+  ethernets:
+    enp9s0:                     # replace with your interface from: ip link show
+      dhcp4: true
+EOF
+sudo netplan apply
+
+# Verify you now have an IP and gateway
+ip route | grep default         # should show a route via your router
+
+# Fix DNS: resolv.conf is a broken symlink (systemd-resolved not installed)
 sudo rm -f /etc/resolv.conf
-echo -e "nameserver 8.8.8.8\nnameserver 1.1.1.1" | sudo tee /etc/resolv.conf
+echo "nameserver $(ip route | grep default | awk '{print $3}')" | sudo tee /etc/resolv.conf
 
-# Install the real fix
+# Fix nsswitch.conf (resolve module is missing on minimal)
+sudo sed -i 's/^hosts:.*/hosts:          files dns/' /etc/nsswitch.conf
+
+# Verify DNS works
+getent hosts archive.ubuntu.com
+
+# Install the permanent DNS fix
 sudo apt update && sudo apt install -y systemd-resolved
-
-# Restore the proper symlink
 sudo ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
 sudo systemctl enable --now systemd-resolved
 ```

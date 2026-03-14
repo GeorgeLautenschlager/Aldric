@@ -33,37 +33,67 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 # --------------------------------------------------------------------------
-# Fix DNS (Ubuntu 24.04 minimal install bug — Launchpad #2055012)
+# Fix networking (Ubuntu 24.04 minimal install issues)
 #
-# systemd-resolved was split into its own package and is NOT included in the
-# minimal install. This leaves /etc/resolv.conf as a broken symlink, so DNS
-# resolution fails entirely. We fix this first since everything else needs apt.
+# The minimal install can have multiple networking problems:
+# 1. No netplan config — interface never gets DHCP, no IP, no route
+# 2. systemd-resolved not installed — /etc/resolv.conf is a broken symlink
+# 3. nsswitch.conf references missing 'resolve' module
+# We fix these first since everything else needs apt.
 # --------------------------------------------------------------------------
 
-fix_dns() {
-    info "Checking DNS resolution..."
+fix_networking() {
+    info "Checking network connectivity..."
 
-    if ping -c 1 -W 3 archive.ubuntu.com &>/dev/null; then
+    # Check for a default route (requires netplan to be configured)
+    if ! ip route | grep -q default; then
+        err "No default route — your network interface has no IP address"
+        err "The minimal installer may not have created a netplan config."
+        err ""
+        err "Fix manually:"
+        err "  1. Find your interface:  ip link show"
+        err "  2. Create /etc/netplan/01-netcfg.yaml with DHCP enabled"
+        err "  3. Run: sudo netplan apply"
+        err "  4. Re-run this script"
+        err ""
+        err "See README.md step 1 for the full commands."
+        exit 1
+    fi
+    ok "Default route exists"
+
+    # Fix nsswitch.conf if it references the missing 'resolve' module
+    if grep -qE '^hosts:.*\bresolve\b' /etc/nsswitch.conf 2>/dev/null; then
+        warn "nsswitch.conf references missing 'resolve' module — fixing"
+        sed -i 's/^hosts:.*/hosts:          files dns/' /etc/nsswitch.conf
+        ok "nsswitch.conf fixed (hosts: files dns)"
+    fi
+
+    # Check if DNS resolution already works
+    if getent hosts archive.ubuntu.com &>/dev/null; then
         ok "DNS resolution is working"
         return
     fi
 
-    warn "DNS resolution failed — applying systemd-resolved fix"
+    warn "DNS resolution failed — applying fix"
 
-    # Verify network connectivity (not DNS) works
-    if ! ping -c 1 -W 3 8.8.8.8 &>/dev/null; then
-        err "No network connectivity (cannot reach 8.8.8.8)"
+    # Verify raw network connectivity (not DNS) via bash built-in
+    if ! bash -c 'echo > /dev/tcp/8.8.8.8/53' 2>/dev/null; then
+        err "No network connectivity (cannot reach 8.8.8.8:53)"
         err "Check your network cable / netplan config and try again"
         exit 1
     fi
+    ok "Network connectivity confirmed"
 
-    # Write a temporary static resolv.conf so apt can resolve hostnames
+    # Write a temporary resolv.conf using the gateway IP (works even if
+    # the network blocks external DNS like 8.8.8.8)
+    local gateway
+    gateway=$(ip route | grep default | awk '{print $3}')
     rm -f /etc/resolv.conf
     cat > /etc/resolv.conf <<EOF
+nameserver ${gateway}
 nameserver 8.8.8.8
-nameserver 1.1.1.1
 EOF
-    ok "Temporary DNS configured (8.8.8.8, 1.1.1.1)"
+    ok "Temporary DNS configured (${gateway}, 8.8.8.8)"
 
     # Install the permanent fix
     apt-get update -qq
@@ -76,7 +106,7 @@ EOF
     ok "DNS resolution restored via systemd-resolved"
 
     # Verify
-    if ping -c 1 -W 3 archive.ubuntu.com &>/dev/null; then
+    if getent hosts archive.ubuntu.com &>/dev/null; then
         ok "DNS verified — archive.ubuntu.com resolves"
     else
         err "DNS still not working after fix. Check network config."
@@ -223,7 +253,7 @@ main() {
     echo "  ╚═══════════════════════════════════════╝"
     echo ""
 
-    fix_dns
+    fix_networking
     echo ""
     system_update
     echo ""
